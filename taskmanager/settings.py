@@ -128,3 +128,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+SWAGGER_SETTINGS = {
+    "SECURITY_DEFINITIONS": {
+        "AuthToken": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

@@ -32,6 +32,12 @@ class TaskValidateSerializer(serializers.Serializer):
         if status and attrs['task_status'] not in ['todo', 'in_progress', 'done']:
             raise serializers.ValidationError("You cannot use such status")
         return attrs
+    def update(self, instance, validated_data):
+        instance.title = validated_data.get('title', instance.title)
+        instance.description = validated_data.get('description', instance.description)
+        instance.task_status = validated_data.get('task_status', instance.status)
+        instance.save()
+        return instance
 
 class TaskDetailSerializer(serializers.ModelSerializer):
     class Meta:
