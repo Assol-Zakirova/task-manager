@@ -11,6 +11,9 @@ from . serializers import RegisterSerializer, TaskListSerializer, TaskValidateSe
 from . models import Task
 from django.db.models import Count, Q
 from . permsissions import IsAnonymous, IsOwner
+from rest_framework.viewsets import ModelViewSet
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter
     
 class RegisterApiView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
@@ -33,55 +36,36 @@ class RegisterApiView(generics.CreateAPIView):
             status=status.HTTP_201_CREATED,
             
         )
+    
+class TaskListViewSet(ModelViewSet):
+    permission_classes = [permissions.IsAuthenticated]
 
-class TaskListApiView(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticated | IsAnonymous]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ['status']
+    search_fields = ['title']
+
     def get_queryset(self):
         return Task.objects.filter(owner=self.request.user)
+
     def get_serializer_class(self):
-        if self.request.method == "POST":
+        if self.action == 'create':
             return TaskValidateSerializer
         return TaskListSerializer
-    def get(self, request):
-        search_query = request.query_params.get('search', None)
-        if search_query:
-            queryset = self.get_queryset().filter(title__icontains=search_query)
-            serializer = TaskListSerializer(queryset, many=True)
-            return Response(serializer.data)
-        status_query = request.query_params.get('status', None)
-        if status_query:
-            queryset = self.get_queryset().filter(status=status_query)
-            serializer = TaskListSerializer(queryset, many=True)
-            return Response(serializer.data)
-        tasks = self.get_queryset()
-        data = TaskListSerializer(tasks, many=True).data
-        return Response(
-            data=data,
-        )
-    def perform_create(self, serializer):
-            title = serializer.validated_data.get('title')
-            description = serializer.validated_data.get('description')
-            task_status = serializer.validated_data.get('task_status')
-            with transaction.atomic():       
-                task = Task.objects.create(
-                    title=title,
-                    description=description,
-                    status=task_status,
-                    owner=self.request.user
-                    )
-            return Response(status=status.HTTP_201_CREATED,
-                    data=TaskListSerializer(task).data)
 
-class TaskDetailApiView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [(permissions.IsAuthenticated & IsOwner)]
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+class TaskDetailViewSet(ModelViewSet):
+    permission_classes = [permissions.IsAuthenticated & IsOwner]
     queryset = Task.objects.all()
     lookup_field = 'id'
     def get_serializer_class(self):
-        if self.request.method in ['PUT', 'PATCH']:
+        if self.action in ['update', 'partial_update']:
             return TaskValidateSerializer
         return TaskDetailSerializer
     def perform_update(self, serializer):
-        serializer.save()
+        serializer.save(owner=self.request.user)
+
     
 class StatsApiView(APIView):
     def get(self, request):

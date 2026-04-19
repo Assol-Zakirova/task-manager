@@ -21,23 +21,10 @@ class TaskListSerializer(serializers.ModelSerializer):
         model = Task
         fields = 'title description owner'.split()
 
-class TaskValidateSerializer(serializers.Serializer):
-    title = serializers.CharField(required=True, min_length=1, max_length=255)
-    description = serializers.CharField(required=False, default='No text')
-    task_status = serializers.CharField(required=True)
-
-    def validate(self, attrs):
-        status = attrs.get('task_status')
-
-        if status and attrs['task_status'] not in ['todo', 'in_progress', 'done']:
-            raise serializers.ValidationError("You cannot use such status")
-        return attrs
-    def update(self, instance, validated_data):
-        instance.title = validated_data.get('title', instance.title)
-        instance.description = validated_data.get('description', instance.description)
-        instance.task_status = validated_data.get('task_status', instance.status)
-        instance.save()
-        return instance
+class TaskValidateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Task
+        fields = ['title', 'description', 'status']
 
 class TaskDetailSerializer(serializers.ModelSerializer):
     class Meta:
